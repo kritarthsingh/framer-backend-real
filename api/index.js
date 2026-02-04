@@ -450,7 +450,7 @@ app.use((err, req, res, next) => {
 // ============================================
 // START SERVER
 // ============================================
-// For Vercel serverless: export app directly, don't call listen()
+// For Vercel serverless: export as handler function
 // For local development, uncomment the lines below:
 /*
 const PORT = process.env.PORT || 3000;
@@ -460,4 +460,5 @@ app.listen(PORT, () => {
 });
 */
 
+// Export for Vercel
 module.exports = app;

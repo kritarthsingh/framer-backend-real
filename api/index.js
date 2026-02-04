@@ -433,10 +433,14 @@ app.put('/api/user/:userId', async (req, res) => {
 // ============================================
 // START SERVER
 // ============================================
+// For Vercel serverless: export app directly, don't call listen()
+// For local development, uncomment the lines below:
+/*
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Real backend running on port ${PORT}`);
   console.log(`📡 Health check: http://localhost:${PORT}`);
 });
+*/
 
 module.exports = app;

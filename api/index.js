@@ -27,19 +27,18 @@ app.use(express.json());
 // 2. INITIALIZE FIREBASE
 // ============================================
 
-// ⚠️ REPLACE THESE VALUES WITH YOUR FIREBASE CONFIG!
-const firebaseConfig = {
-  type: "service_account",
-  project_id: "YOUR_PROJECT_ID", // ← Replace
-  private_key_id: "YOUR_PRIVATE_KEY_ID", // ← Replace
-  private_key: "-----BEGIN PRIVATE KEY-----\nYOUR_PRIVATE_KEY_HERE\n-----END PRIVATE KEY-----\n", // ← Replace
-  client_email: "firebase-adminsdk@YOUR_PROJECT.iam.gserviceaccount.com", // ← Replace
-  client_id: "YOUR_CLIENT_ID", // ← Replace
-  auth_uri: "https://accounts.google.com/o/oauth2/auth",
-  token_uri: "https://oauth2.googleapis.com/token",
-  auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-  client_x509_cert_url: "https://www.googleapis.com/robot/v1/metadata/x509/..."
-};
+// Load Firebase config from environment variable
+let firebaseConfig;
+try {
+  if (process.env.FIREBASE_CONFIG) {
+    firebaseConfig = JSON.parse(process.env.FIREBASE_CONFIG);
+  } else {
+    throw new Error('FIREBASE_CONFIG environment variable not set');
+  }
+} catch (error) {
+  console.error('❌ Failed to load Firebase config:', error.message);
+  process.exit(1);
+}
 
 try {
   admin.initializeApp({

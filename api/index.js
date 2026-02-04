@@ -53,18 +53,24 @@ const db = admin.firestore();
 // 3. HEALTH CHECK ENDPOINT
 // ============================================
 app.get('/', (req, res) => {
-  res.json({
-    status: 'online',
-    message: 'Framer + Firebase Backend is running!',
-    timestamp: new Date().toISOString(),
-    endpoints: [
-      'POST /api/register - Register new user',
-      'POST /api/login - Login user',
-      'GET /api/user/:id - Get user data',
-      'POST /api/projects - Create project',
-      'GET /api/users - Get all users (admin)'
-    ]
-  });
+  try {
+    res.json({
+      status: 'online',
+      message: 'Framer + Firebase Backend is running!',
+      timestamp: new Date().toISOString(),
+      firebaseStatus: firebaseInitialized ? 'initialized' : 'disabled',
+      endpoints: [
+        'POST /api/register - Register new user',
+        'POST /api/login - Login user',
+        'GET /api/user/:id - Get user data',
+        'POST /api/projects - Create project',
+        'GET /api/users - Get all users (admin)'
+      ]
+    });
+  } catch (error) {
+    console.error('❌ Health check error:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // ============================================
@@ -428,6 +434,17 @@ app.put('/api/user/:userId', async (req, res) => {
       error: 'Failed to update profile'
     });
   }
+});
+
+// ============================================
+// ERROR HANDLER
+// ============================================
+app.use((err, req, res, next) => {
+  console.error('❌ Express error:', err);
+  res.status(500).json({
+    success: false,
+    error: err.message || 'Internal server error'
+  });
 });
 
 // ============================================

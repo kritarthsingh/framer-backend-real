@@ -29,24 +29,22 @@ app.use(express.json());
 
 // Load Firebase config from environment variable
 let firebaseConfig;
+let firebaseInitialized = false;
+
 try {
   if (process.env.FIREBASE_CONFIG) {
     firebaseConfig = JSON.parse(process.env.FIREBASE_CONFIG);
+    admin.initializeApp({
+      credential: admin.credential.cert(firebaseConfig)
+    });
+    firebaseInitialized = true;
+    console.log('✅ Firebase Admin initialized successfully');
   } else {
-    throw new Error('FIREBASE_CONFIG environment variable not set');
+    console.warn('⚠️ FIREBASE_CONFIG not set - Firebase features will be disabled');
   }
 } catch (error) {
-  console.error('❌ Failed to load Firebase config:', error.message);
-  process.exit(1);
-}
-
-try {
-  admin.initializeApp({
-    credential: admin.credential.cert(firebaseConfig)
-  });
-  console.log('✅ Firebase Admin initialized successfully');
-} catch (error) {
-  console.error('❌ Firebase Admin error:', error);
+  console.error('❌ Firebase initialization error:', error.message);
+  console.warn('⚠️ Firebase is disabled, but server will continue running');
 }
 
 const db = admin.firestore();

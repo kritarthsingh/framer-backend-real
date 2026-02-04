@@ -49,7 +49,9 @@ try {
 }
 
 const db = admin.firestore();
-
+ 
+// Test mode password (used when Firebase is disabled)
+const TEST_PASSWORD = process.env.TEST_PASSWORD || 'password123';
 // ============================================
 // 3. HEALTH CHECK ENDPOINT
 // ============================================
@@ -172,10 +174,18 @@ app.post('/api/register', async (req, res) => {
 // ============================================
 app.post('/api/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
-    
-    console.log('🔑 Login attempt:', email);
-    
+    const { email, password, provider } = req.body;
+
+    console.log('🔑 Login attempt:', email, 'provider=', provider || 'password');
+
+    if (provider && provider === 'google') {
+      // OAuth not set up in this demo backend
+      return res.status(400).json({
+        success: false,
+        error: 'Google OAuth is not configured on the backend. Configure OAuth or use email/password for testing.'
+      });
+    }
+
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -185,7 +195,17 @@ app.post('/api/login', async (req, res) => {
 
     // Check if Firebase is initialized
     if (!firebaseInitialized) {
-      console.warn('⚠️ Firebase not initialized, creating mock user');
+      console.warn('⚠️ Firebase not initialized - running in mock/test mode');
+
+      // Require matching test password in mock mode
+      if (password !== TEST_PASSWORD) {
+        console.warn('🔒 Mock login failed: invalid test password');
+        return res.status(401).json({
+          success: false,
+          error: 'Invalid credentials (use the test password)'
+        });
+      }
+
       // Create mock response for testing
       const mockUser = {
         uid: 'user_' + Date.now(),
@@ -193,39 +213,40 @@ app.post('/api/login', async (req, res) => {
         name: email.split('@')[0],
         createdAt: new Date().toISOString()
       };
-      
+
       return res.status(200).json({
         success: true,
         user: mockUser,
         token: 'mock_token_' + Date.now(),
-        message: 'Login successful (Firebase disabled - mock mode)!'
+        message: 'Login successful (mock mode)'
       });
     }
-    
-    // In production, you'd use Firebase Client SDK for login
-    // For now, return a mock response
-    const mockUser = {
-      uid: 'user_' + Date.now(),
-      email: email,
-      name: email.split('@')[0],
-      createdAt: new Date().toISOString()
-    };
-    
-    const customToken = await admin.auth().createCustomToken(mockUser.uid);
-    
-    res.status(200).json({
-      success: true,
-      user: mockUser,
-      token: customToken,
-      message: 'Login successful!'
-    });
-    
+
+    // If Firebase is initialized, we can't verify passwords from the server
+    // Recommend client-side sign-in (Firebase Web SDK) or use the REST API with API key.
+    // For now, attempt to find the user and return a custom token (without password verification).
+    try {
+      const userRecord = await admin.auth().getUserByEmail(email);
+      const customToken = await admin.auth().createCustomToken(userRecord.uid);
+      return res.status(200).json({
+        success: true,
+        user: {
+          uid: userRecord.uid,
+          email: userRecord.email,
+          name: userRecord.displayName || email.split('@')[0],
+          createdAt: new Date().toISOString()
+        },
+        token: customToken,
+        message: 'Login successful (no password verification - use client SDK for production)'
+      });
+    } catch (err) {
+      console.error('❌ Firebase login lookup failed:', err.message || err);
+      return res.status(401).json({ success: false, error: 'Invalid credentials' });
+    }
+
   } catch (error) {
     console.error('❌ Login error:', error);
-    res.status(401).json({
-      success: false,
-      error: 'Invalid credentials'
-    });
+    res.status(500).json({ success: false, error: 'Server error' });
   }
 });
 

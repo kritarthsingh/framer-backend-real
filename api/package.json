@@ -1,0 +1,12 @@
+{
+  "name": "framer-backend-real",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node api/index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "firebase-admin": "^11.0.0"
+  }
+}

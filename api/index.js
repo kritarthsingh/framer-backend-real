@@ -13,14 +13,15 @@ const app = express();
 // 1. CONFIGURE CORS (Allow Framer)
 // ============================================
 app.use(cors({
-  origin: [
-    'https://framer.com',
-    'https://*.framer.com',
-    'https://*.framer.website',
-    'http://localhost:3000'
-  ],
-  credentials: true
+  origin: '*', // Allow all origins for now (can restrict later)
+  credentials: false,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Handle preflight requests
+app.options('*', cors());
+
 app.use(express.json());
 
 // ============================================
@@ -54,7 +55,8 @@ const db = admin.firestore();
 // ============================================
 app.get('/', (req, res) => {
   try {
-    res.json({
+    console.log('✅ Health check request received');
+    res.status(200).json({
       status: 'online',
       message: 'Framer + Firebase Backend is running!',
       timestamp: new Date().toISOString(),
@@ -69,7 +71,10 @@ app.get('/', (req, res) => {
     });
   } catch (error) {
     console.error('❌ Health check error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ 
+      error: error.message,
+      status: 'error'
+    });
   }
 });
 
@@ -81,6 +86,32 @@ app.post('/api/register', async (req, res) => {
     const { email, password, name } = req.body;
     
     console.log('📝 Registration attempt:', { email, name });
+    
+    if (!email || !password || !name) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: email, password, name'
+      });
+    }
+
+    // Check if Firebase is initialized
+    if (!firebaseInitialized) {
+      console.warn('⚠️ Firebase not initialized, creating mock user');
+      // Create mock response for testing
+      const mockUser = {
+        uid: 'user_' + Date.now(),
+        email: email,
+        name: name,
+        createdAt: new Date().toISOString()
+      };
+      
+      return res.status(200).json({
+        success: true,
+        user: mockUser,
+        token: 'mock_token_' + Date.now(),
+        message: 'Registration successful (Firebase disabled - mock mode)!'
+      });
+    }
     
     // 1. Create user in Firebase Authentication
     const userRecord = await admin.auth().createUser({
@@ -115,7 +146,7 @@ app.post('/api/register', async (req, res) => {
     // 3. Generate custom token for client
     const customToken = await admin.auth().createCustomToken(userRecord.uid);
     
-    res.json({
+    res.status(200).json({
       success: true,
       user: {
         uid: userRecord.uid,
@@ -131,7 +162,7 @@ app.post('/api/register', async (req, res) => {
     console.error('❌ Registration error:', error.message);
     res.status(400).json({
       success: false,
-      error: error.message
+      error: error.message || 'Registration failed'
     });
   }
 });
@@ -145,12 +176,34 @@ app.post('/api/login', async (req, res) => {
     
     console.log('🔑 Login attempt:', email);
     
-    // Note: In production, you'd use Firebase Client SDK for login
-    // For backend-only, we need to verify via admin or use REST API
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing email or password'
+      });
+    }
+
+    // Check if Firebase is initialized
+    if (!firebaseInitialized) {
+      console.warn('⚠️ Firebase not initialized, creating mock user');
+      // Create mock response for testing
+      const mockUser = {
+        uid: 'user_' + Date.now(),
+        email: email,
+        name: email.split('@')[0],
+        createdAt: new Date().toISOString()
+      };
+      
+      return res.status(200).json({
+        success: true,
+        user: mockUser,
+        token: 'mock_token_' + Date.now(),
+        message: 'Login successful (Firebase disabled - mock mode)!'
+      });
+    }
     
-    // For demo, we'll simulate successful login
-    // You'd normally get user from Firebase Auth REST API
-    
+    // In production, you'd use Firebase Client SDK for login
+    // For now, return a mock response
     const mockUser = {
       uid: 'user_' + Date.now(),
       email: email,
@@ -160,7 +213,7 @@ app.post('/api/login', async (req, res) => {
     
     const customToken = await admin.auth().createCustomToken(mockUser.uid);
     
-    res.json({
+    res.status(200).json({
       success: true,
       user: mockUser,
       token: customToken,
